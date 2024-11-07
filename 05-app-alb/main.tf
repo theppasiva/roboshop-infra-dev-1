@@ -5,13 +5,7 @@ resource "aws_lb" "app-alb" {
   security_groups    = [data.aws_ssm_parameter.app_alb_sg_id.value]
   subnets            = split(",", data.aws_ssm_parameter.private_subnet_ids.value)
 
-  enable_deletion_protection = true
-
-  access_logs {
-    bucket  = aws_s3_bucket.lb_logs.id
-    prefix  = "test-lb"
-    enabled = true
-  }
+  #enable_deletion_protection = true # because we delete after practice
 
   tags = merge(
     var.common_tags,
@@ -19,4 +13,20 @@ resource "aws_lb" "app-alb" {
 
   )
     
+}
+
+resource "aws_lb_listener" "front_end" {
+  load_balancer_arn = aws_lb.app-alb.arn
+  port              = "80"
+  protocol          = "HTTP"
+
+  default_action {
+    type = "fixed-response"
+
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "Hi, this response is from app ALB"
+      status_code  = "200"
+    }
+  }
 }
