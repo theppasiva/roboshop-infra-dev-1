@@ -1,9 +1,9 @@
-# create catalogue target group
 resource "aws_lb_target_group" "catalogue" {
-  name     = "${local.name}-${var.tags.Component}" #roboshop-dev-catalogue
+  name     = "${local.name}-${var.tags.Component}"
   port     = 8080
   protocol = "HTTP"
   vpc_id   = data.aws_ssm_parameter.vpc_id.value
+  deregistration_delay = 60
   health_check {
       healthy_threshold   = 2
       interval            = 10
@@ -11,24 +11,24 @@ resource "aws_lb_target_group" "catalogue" {
       timeout             = 5
       path                = "/health"
       port                = 8080
-      matcher             = "200-299" #matcher is nothing but success codes from 200-299
+      matcher = "200-299"
   }
 }
-# create cataloue instance
+
 module "catalogue" {
   source                 = "terraform-aws-modules/ec2-instance/aws"
-  ami                    = data.aws_ami.centos8.id
+  ami = data.aws_ami.centos8.id
   name                   = "${local.name}-${var.tags.Component}-ami"
   instance_type          = "t2.micro"
   vpc_security_group_ids = [data.aws_ssm_parameter.catalogue_sg_id.value]
   subnet_id              = element(split(",", data.aws_ssm_parameter.private_subnet_ids.value), 0)
-  iam_instance_profile   = "Ec2roleForShellSript"
+  iam_instance_profile = "Ec2roleForShellSript"
   tags = merge(
     var.common_tags,
     var.tags
   )
 }
-# provision with ansible
+
 resource "null_resource" "catalogue" {
   # Changes to any instance of the cluster requires re-provisioning
   triggers = {
@@ -57,29 +57,49 @@ resource "null_resource" "catalogue" {
     ]
   }
 }
-# terraform aws stop instance
-resource "aws_ec2_instance_state" "cataloue" {
+
+resource "aws_ec2_instance_state" "catalogue" {
   instance_id = module.catalogue.id
   state       = "stopped"
-  depends_on = [null_resource.catalogue] # we must define depends_on other wise it will stopped at the time of creation
-}
-# get ami from instance
-resource "aws_ami_from_instance" "cataloue" {
-  name               = "${local.name}-${var.tags.Component}-${local.current_time}"
-  source_instance_id = "module.catalogue.id"
+  depends_on = [ null_resource.catalogue ]
 }
 
-# destroy instance after ami creation
+resource "aws_ami_from_instance" "catalogue" {
+  name               = "${local.name}-${var.tags.Component}-${local.current_time}"
+  source_instance_id = module.catalogue.id
+  depends_on = [ aws_ec2_instance_state.catalogue ]
+}
+
 resource "null_resource" "catalogue_delete" {
   # Changes to any instance of the cluster requires re-provisioning
   triggers = {
-    instance_id = aws_ami_from_instance.cataloue.id
+    instance_id = module.catalogue.id
   }
 
-  provisioner "local_exec" {
-    command      = "aws ec2 terminate-instances --instance-ids ${module.catalogue.id}"
-    destination = "/tmp/bootstrap.sh"
+  provisioner "local-exec" {
+    # Bootstrap script called with private_ip of each node in the cluster
+    command = "aws ec2 terminate-instances --instance-ids ${module.catalogue.id}"
   }
 
-  depends_on = [aws_ami_from_instance.cataloue]
+  depends_on = [ aws_ami_from_instance.catalogue]
+}
+
+resource "aws_launch_template" "catalogue" {
+  name = "${local.name}-${var.tags.Component}"
+
+  image_id = aws_ami_from_instance.catalogue.id
+  instance_initiated_shutdown_behavior = "terminate"
+  instance_type = "t2.micro"
+  update_default_version = true
+
+  vpc_security_group_ids = [data.aws_ssm_parameter.catalogue_sg_id.value]
+
+  tag_specifications {
+    resource_type = "instance"
+
+    tags = {
+      Name = "${local.name}-${var.tags.Component}"
+    }
+  }
+
 }
