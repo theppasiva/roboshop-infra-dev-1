@@ -112,10 +112,9 @@ resource "aws_autoscaling_group" "catalogue" {
   health_check_grace_period = 60
   health_check_type         = "ELB"
   desired_capacity          = 2
-  force_delete              = true
   vpc_zone_identifier       = split(",", data.aws_ssm_parameter.private_subnet_ids.value)
-  target_group_arns         = [aws_lb_target_group.catalogue.arn]
-
+  target_group_arns = [ aws_lb_target_group.catalogue.arn ]
+  
   launch_template {
     id      = aws_launch_template.catalogue.id
     version = aws_launch_template.catalogue.latest_version
@@ -149,9 +148,10 @@ resource "aws_lb_listener_rule" "catalogue" {
     target_group_arn = aws_lb_target_group.catalogue.arn
   }
 
+
   condition {
     host_header {
-      values = ["${var.tags.Component}.app-${var.environment}.${var.zone_name}"] # this value is catalogue-dev.app-dev.shivarampractice.online
+      values = ["${var.tags.Component}.app-${var.environment}.${var.zone_name}"]
     }
   }
 }
@@ -160,11 +160,12 @@ resource "aws_autoscaling_policy" "catalogue" {
   autoscaling_group_name = aws_autoscaling_group.catalogue.name
   name                   = "${local.name}-${var.tags.Component}"
   policy_type            = "TargetTrackingScaling"
+
   target_tracking_configuration {
     predefined_metric_specification {
       predefined_metric_type = "ASGAverageCPUUtilization"
     }
 
-    target_value = 5.0 # general it should be 75
+    target_value = 5.0
   }
 }
