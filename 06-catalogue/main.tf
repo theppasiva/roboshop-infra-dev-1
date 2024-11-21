@@ -1,10 +1,10 @@
-# target group creation
+
 resource "aws_lb_target_group" "catalogue" {
   name     = "${local.name}-${var.tags.Component}"
   port     = 8080
   protocol = "HTTP"
   vpc_id   = data.aws_ssm_parameter.vpc_id.value
-  deregistration_delay = 60 # target deregistration delay
+  deregistration_delay = 60
   health_check {
       healthy_threshold   = 2
       interval            = 10
@@ -15,7 +15,7 @@ resource "aws_lb_target_group" "catalogue" {
       matcher = "200-299"
   }
 }
-# launch catalogue instance
+
 module "catalogue" {
   source                 = "terraform-aws-modules/ec2-instance/aws"
   ami = data.aws_ami.centos8.id
@@ -29,7 +29,7 @@ module "catalogue" {
     var.tags
   )
 }
-# provision instane
+
 resource "null_resource" "catalogue" {
   # Changes to any instance of the cluster requires re-provisioning
   triggers = {
@@ -54,23 +54,23 @@ resource "null_resource" "catalogue" {
     # Bootstrap script called with private_ip of each node in the cluster
     inline = [
       "chmod +x /tmp/bootstrap.sh",
-      "sudo sh /tmp/bootstrap.sh catalogue dev"
+      "sudo sh /tmp/bootstrap.sh catalogue prod"
     ]
   }
 }
-# stop the instance
+
 resource "aws_ec2_instance_state" "catalogue" {
   instance_id = module.catalogue.id
   state       = "stopped"
   depends_on = [ null_resource.catalogue ]
 }
-# take AMI
+
 resource "aws_ami_from_instance" "catalogue" {
   name               = "${local.name}-${var.tags.Component}-${local.current_time}"
   source_instance_id = module.catalogue.id
   depends_on = [ aws_ec2_instance_state.catalogue ]
 }
-# delete instance
+
 resource "null_resource" "catalogue_delete" {
   # Changes to any instance of the cluster requires re-provisioning
   triggers = {
@@ -82,16 +82,17 @@ resource "null_resource" "catalogue_delete" {
     command = "aws ec2 terminate-instances --instance-ids ${module.catalogue.id}"
   }
 
-  depends_on = [ aws_ami_from_instance.catalogue]
+    depends_on = [ aws_ami_from_instance.catalogue ]
 }
-# launch template using AMI
+
 resource "aws_launch_template" "catalogue" {
   name = "${local.name}-${var.tags.Component}"
 
   image_id = aws_ami_from_instance.catalogue.id
   instance_initiated_shutdown_behavior = "terminate"
   instance_type = "t2.micro"
-  update_default_version = true # we refresh auto scaling by putting as true
+  update_default_version = true
+
 
   vpc_security_group_ids = [data.aws_ssm_parameter.catalogue_sg_id.value]
 
@@ -104,7 +105,7 @@ resource "aws_launch_template" "catalogue" {
   }
 
 }
-# auto scaling
+
 resource "aws_autoscaling_group" "catalogue" {
   name                      = "${local.name}-${var.tags.Component}"
   max_size                  = 10
@@ -114,7 +115,6 @@ resource "aws_autoscaling_group" "catalogue" {
   desired_capacity          = 2
   vpc_zone_identifier       = split(",", data.aws_ssm_parameter.private_subnet_ids.value)
   target_group_arns = [ aws_lb_target_group.catalogue.arn ]
-  
   launch_template {
     id      = aws_launch_template.catalogue.id
     version = aws_launch_template.catalogue.latest_version
@@ -137,6 +137,7 @@ resource "aws_autoscaling_group" "catalogue" {
   timeouts {
     delete = "15m"
   }
+
 }
 
 resource "aws_lb_listener_rule" "catalogue" {
@@ -151,7 +152,7 @@ resource "aws_lb_listener_rule" "catalogue" {
 
   condition {
     host_header {
-      values = ["${var.tags.Component}.app-${var.environment}.${var.zone_name}"] # this value is catalogue-dev.app-dev.shivarampractice.online
+      values = ["${var.tags.Component}.app-${var.environment}.${var.zone_name}"]
     }
   }
 }
@@ -166,6 +167,6 @@ resource "aws_autoscaling_policy" "catalogue" {
       predefined_metric_type = "ASGAverageCPUUtilization"
     }
 
-    target_value = 5.0
+    target_value = 5.0 #in general it's 75 or 80
   }
 }
