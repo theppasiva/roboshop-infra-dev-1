@@ -9,7 +9,7 @@ terraform {
 
 backend "s3" {
     bucket = "shivaram-practice-terraform-dev"
-    key    = "provider"
+    key    = "acm"
     region = "us-east-1"
     dynamodb_table = "shivaram-practice-terraform-locking-dev"
   }
