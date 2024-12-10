@@ -29,7 +29,7 @@ pipeline {
                 sh """
                     cd 02-sg
                     terraform init -reconfigure
-                    terraform apply -auto-approven
+                    terraform apply -auto-approve
                 """
             }
         }
@@ -38,7 +38,7 @@ pipeline {
                 sh """
                     cd 03-vpn
                     terraform init -reconfigure
-                    terraform apply -auto-approven
+                    terraform apply -auto-approve
                 """
             }
         }
@@ -49,7 +49,7 @@ pipeline {
                         sh """
                             cd 04-databases
                             terraform init -reconfigure
-                            terraform apply -auto-approven
+                            terraform apply -auto-approve
                         """
                     }
                 }
@@ -58,7 +58,7 @@ pipeline {
                         sh """
                             cd 05-app-alb
                             terraform init -reconfigure
-                            terraform apply -auto-approven
+                            terraform apply -auto-approve
                         """
                     }
                 }
