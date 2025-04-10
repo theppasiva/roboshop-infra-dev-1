@@ -2,16 +2,16 @@ terraform {
   required_providers {
     aws = {
       source = "hashicorp/aws"
-      version = "5.63.0"
+      version = "5.86.1"
     }
   }
 
 
 backend "s3" {
-    bucket = "shivaram-practice-terraform-dev"
+    bucket = "sivaram-practice-terraform-dev"
     key    = "sg"
     region = "us-east-1"
-    dynamodb_table = "shivaram-practice-terraform-locking-dev"
+    dynamodb_table = "sivaram-practice-terraform-locking-dev"
   }
 
 }
