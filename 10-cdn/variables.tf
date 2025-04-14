@@ -20,5 +20,5 @@ variable "environment" {
 }
 
 variable "zone_name" {
-  default = "shivarampractise.online"
+  default = "sivapractice.online"
 }

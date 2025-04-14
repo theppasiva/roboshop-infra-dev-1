@@ -1,5 +1,5 @@
-resource "aws_acm_certificate" "shivarampractise" {
-  domain_name       = "*.shivarampractise.online"
+resource "aws_acm_certificate" "sivapractice" {
+  domain_name       = "*.sivapractice.online"
   validation_method = "DNS"
 
   tags = merge(
@@ -12,9 +12,9 @@ resource "aws_acm_certificate" "shivarampractise" {
   }
 }
 
-resource "aws_route53_record" "shivarampractise" {
+resource "aws_route53_record" "sivapractice" {
   for_each = {
-    for dvo in aws_acm_certificate.shivarampractise.domain_validation_options : dvo.domain_name => {
+    for dvo in aws_acm_certificate.sivapractice.domain_validation_options : dvo.domain_name => {
       name   = dvo.resource_record_name
       record = dvo.resource_record_value
       type   = dvo.resource_record_type
@@ -29,7 +29,7 @@ resource "aws_route53_record" "shivarampractise" {
   zone_id         = data.aws_route53_zone.shivarampractice.zone_id
 }
 
-resource "aws_acm_certificate_validation" "shivarampractise" {
-  certificate_arn         = aws_acm_certificate.shivarampractise.arn
-  validation_record_fqdns = [for record in aws_route53_record.shivarampractise : record.fqdn]
+resource "aws_acm_certificate_validation" "sivapractice" {
+  certificate_arn         = aws_acm_certificate.sivapractice.arn
+  validation_record_fqdns = [for record in aws_route53_record.sivapractice : record.fqdn]
 }

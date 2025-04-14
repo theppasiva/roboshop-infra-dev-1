@@ -1,4 +1,4 @@
-
+# create targetgroup
 resource "aws_lb_target_group" "catalogue" {
   name     = "${local.name}-${var.tags.Component}"
   port     = 8080
@@ -15,7 +15,7 @@ resource "aws_lb_target_group" "catalogue" {
       matcher = "200-299"
   }
 }
-
+# create catalogue instance
 module "catalogue" {
   source                 = "terraform-aws-modules/ec2-instance/aws"
   ami = data.aws_ami.centos8.id
@@ -23,13 +23,13 @@ module "catalogue" {
   instance_type          = "t2.micro"
   vpc_security_group_ids = [data.aws_ssm_parameter.catalogue_sg_id.value]
   subnet_id              = element(split(",", data.aws_ssm_parameter.private_subnet_ids.value), 0)
-  iam_instance_profile = "Ec2roleForShellSript"
+  iam_instance_profile = "Ec2RoleForShellScript"
   tags = merge(
     var.common_tags,
     var.tags
   )
 }
-
+# provision catalogue instance using ansible
 resource "null_resource" "catalogue" {
   # Changes to any instance of the cluster requires re-provisioning
   triggers = {
@@ -58,19 +58,21 @@ resource "null_resource" "catalogue" {
     ]
   }
 }
-
+# stop the instance
 resource "aws_ec2_instance_state" "catalogue" {
   instance_id = module.catalogue.id
   state       = "stopped"
-  depends_on = [ null_resource.catalogue ]
+  depends_on = [ null_resource.catalogue ] # we must define depends_on other wise it will stopped at the time of creation
 }
 
+#take the  ami
 resource "aws_ami_from_instance" "catalogue" {
   name               = "${local.name}-${var.tags.Component}-${local.current_time}"
   source_instance_id = module.catalogue.id
   depends_on = [ aws_ec2_instance_state.catalogue ]
 }
 
+# delete the instance
 resource "null_resource" "catalogue_delete" {
   # Changes to any instance of the cluster requires re-provisioning
   triggers = {
@@ -84,12 +86,12 @@ resource "null_resource" "catalogue_delete" {
 
     depends_on = [ aws_ami_from_instance.catalogue ]
 }
-
+# create launch template using ami
 resource "aws_launch_template" "catalogue" {
   name = "${local.name}-${var.tags.Component}"
 
   image_id = aws_ami_from_instance.catalogue.id
-  instance_initiated_shutdown_behavior = "terminate"
+  instance_initiated_shutdown_behavior = "terminate" #shut down behaviour of the instance
   instance_type = "t2.micro"
   update_default_version = true
 
@@ -105,7 +107,7 @@ resource "aws_launch_template" "catalogue" {
   }
 
 }
-
+# create auto scaling group using launch template
 resource "aws_autoscaling_group" "catalogue" {
   name                      = "${local.name}-${var.tags.Component}"
   max_size                  = 10
@@ -139,7 +141,7 @@ resource "aws_autoscaling_group" "catalogue" {
   }
 
 }
-
+# create target group
 resource "aws_lb_listener_rule" "catalogue" {
   listener_arn = data.aws_ssm_parameter.app_alb_listener_arn.value
   priority     = 10
@@ -152,7 +154,7 @@ resource "aws_lb_listener_rule" "catalogue" {
 
   condition {
     host_header {
-      values = ["${var.tags.Component}.app-${var.environment}.${var.zone_name}"]
+      values = ["${var.tags.Component}.app-${var.environment}.${var.zone_name}"] #catalogue-dev.app-dev.sivapractice.online
     }
   }
 }

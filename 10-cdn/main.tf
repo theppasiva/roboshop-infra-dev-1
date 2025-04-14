@@ -1,5 +1,5 @@
 
-resource "aws_cloudfront_distribution" "shivarampractice" {
+resource "aws_cloudfront_distribution" "sivapractice" {
   enabled             = true
   aliases             = ["web-${var.tags.Component}.${var.zone_name}"]
   origin {
@@ -76,8 +76,8 @@ module "records" {
       name    = "web-cdn"
       type    = "A"
       alias   = {
-        name    = aws_cloudfront_distribution.shivarampractice.domain_name
-        zone_id = aws_cloudfront_distribution.shivarampractice.hosted_zone_id
+        name    = aws_cloudfront_distribution.sivapractice.domain_name
+        zone_id = aws_cloudfront_distribution.sivapractice.hosted_zone_id
       }
     }
   ]

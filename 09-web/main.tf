@@ -23,7 +23,7 @@ module "web" {
   instance_type          = "t2.micro"
   vpc_security_group_ids = [data.aws_ssm_parameter.web_sg_id.value]
   subnet_id              = element(split(",", data.aws_ssm_parameter.private_subnet_ids.value), 0)
-  iam_instance_profile = "Ec2roleForShellSript"
+  iam_instance_profile = "Ec2RoleForShellScript"
   tags = merge(
     var.common_tags,
     var.tags
